@@ -1,5 +1,12 @@
 package main
 
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+)
+
 var BlacklistEntries []string = []string{
 	"access.redhawk.org",
 	"b.barracudacentral.org",
@@ -63,5 +70,24 @@ var BlacklistEntries []string = []string{
 }
 
 func GetBlacklistHosts() []string {
+	if len(*blacklistFile) > 0 {
+		retval := make([]string, 0, 16)
+
+		content, err := ioutil.ReadFile(*blacklistFile)
+		if err != nil {
+			fmt.Printf("Error while reading blacklists file: %v", err)
+			os.Exit(1)
+		}
+
+		lines := strings.Split(string(content), "\n")
+		for _, line := range lines {
+			if len(line) == 0 {
+				continue
+			}
+			retval = append(retval, line)
+		}
+		return retval
+	}
 	return BlacklistEntries
+
 }

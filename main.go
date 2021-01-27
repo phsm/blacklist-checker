@@ -40,17 +40,15 @@ var (
 	verbose = app.Flag("verbose", "Verbose mode.").Bool()
 	version = app.Command("version", "Show version and terminate").Action(ShowVersion)
 
-	nameserver = app.Flag("nameserver", "Name server to use").Default("8.8.8.8:53").TCP()
-	queueSize  = app.Flag("queue", "How many request to process at one time").Default("15").Int()
-	//	blacklistFile = app.Flag("blacklist", "A blacklist file to use").ExistingFile()
+	nameserver    = app.Flag("nameserver", "Name server to use").Default("1.1.1.1:53").TCP()
+	queueSize     = app.Flag("queue", "How many request to process at one time").Default("1").Int()
+	blacklistFile = app.Flag("blacklist", "A blacklist file to use").ExistingFile()
 
-	checkIp = app.Command("ip", "Check IP against available blacklists")
-	ip      = checkIp.Arg("ip-address", "IP address to check against blacklists.").Required().IP()
-	//	ipBlacklistServer = checkIp.Arg("blacklist-server", "Blacklist server to check against").HintAction(GetBlacklistHosts).String()
+	checkIP = app.Command("ip", "Check IP against available blacklists")
+	ip      = checkIP.Arg("ip-address", "IP address to check against blacklists.").Required().IP()
 
 	checkRange = app.Command("cidr", "Check CIDR against available blacklists")
 	rangeCidr  = checkRange.Arg("cidr-address", "CIDR address to check against blacklists.").Required().String()
-	//	rangeCidrBlacklistServer = checkRange.Arg("blacklist-server", "Blacklist server to check against").HintAction(GetBlacklistHosts).String()
 
 	list = app.Command("list", "List available blacklists")
 )
@@ -108,13 +106,13 @@ func ProcessQueue() {
 			if len(qr.Response) > 0 {
 				fmt.Printf("%s blacklisted on %s with %s\n", qr.IP.String(), qr.Blacklist, strings.Join(qr.Response, ","))
 			}
+			wg.Done()
 		}
 	}
 
 }
 
 func AddQueueItemsToQueue(IPs []net.IP) {
-
 	for _, ip := range IPs {
 		for _, blacklist := range hosts {
 			queue <- QueueItem{
@@ -127,9 +125,6 @@ func AddQueueItemsToQueue(IPs []net.IP) {
 }
 
 func CheckIfBlacklisted(channel chan<- QueueItem, IP net.IP, blacklist string) {
-
-	defer wg.Done()
-
 	client := new(dns.Client)
 
 	qi := QueueItem{
@@ -158,6 +153,7 @@ func CheckIfBlacklisted(channel chan<- QueueItem, IP net.IP, blacklist string) {
 			IP:        IP,
 			Blacklist: blacklist,
 		}
+		wg.Done()
 		return
 	}
 
@@ -166,6 +162,7 @@ func CheckIfBlacklisted(channel chan<- QueueItem, IP net.IP, blacklist string) {
 		if *verbose {
 			fmt.Printf("%v\n", qi.Error)
 		}
+		wg.Done()
 		return
 	}
 
@@ -184,5 +181,4 @@ func CheckIfBlacklisted(channel chan<- QueueItem, IP net.IP, blacklist string) {
 	}
 
 	channel <- qi
-
 }
